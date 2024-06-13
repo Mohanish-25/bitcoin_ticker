@@ -1,15 +1,11 @@
 // ignore_for_file: prefer_const_literals_to_create_immutables, prefer_const_constructors
 
-import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:bitcoin_ticker/networking.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'coin_data.dart';
-
-final apiKey = dotenv.env['API_KEY'];
 
 class PriceScreen extends StatefulWidget {
   @override
@@ -20,33 +16,25 @@ class _PriceScreenState extends State<PriceScreen> {
   @override
   void initState() {
     super.initState();
-    initializeCoinData();
+    getData();
   }
 
-  Future<void> initializeCoinData() async {
-    var coinData = await getCoinData();
-    updateUI(coinData);
-  }
-
-  String? coinValue;
   String selectedCurrency = 'USD';
-  Future<dynamic> getCoinData() async {
-    NetworkHelper networkHelper = NetworkHelper(
-        'https://rest.coinapi.io/v1/exchangerate/BTC/$selectedCurrency?apikey=$apiKey');
-    var coinData = await networkHelper.getData();
-    return coinData;
-  }
 
-  void updateUI(dynamic coinData) {
-    setState(() {
-      if (coinData == null) {
-        coinValue = '0';
-        return;
-      }
-      double rate = coinData['rate'];
-      int rateInt = rate.toInt();
-      coinValue = rateInt.toString();
-    });
+  Map<String, String> coinValues = {};
+  bool isWaiting = false;
+
+  void getData() async {
+    isWaiting = true;
+    try {
+      var data = await CoinData().getCoinData(selectedCurrency);
+      isWaiting = false;
+      setState(() {
+        coinValues = data;
+      });
+    } catch (e) {
+      print(e);
+    }
   }
 
   DropdownButton<String> androidDropdown() {
@@ -64,7 +52,7 @@ class _PriceScreenState extends State<PriceScreen> {
       onChanged: (value) {
         setState(() {
           selectedCurrency = value!;
-          getCoinData().then((value) => updateUI(value));
+          getData();
         });
       },
     );
@@ -80,7 +68,7 @@ class _PriceScreenState extends State<PriceScreen> {
       itemExtent: 32.0,
       onSelectedItemChanged: (selectedIndex) {
         selectedCurrency = currenciesList[selectedIndex];
-        getCoinData().then((value) => updateUI(value));
+        getData();
       },
       children: pickerItems,
     );
@@ -96,26 +84,25 @@ class _PriceScreenState extends State<PriceScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Padding(
-            padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-            child: Card(
-              color: Colors.lightBlueAccent,
-              elevation: 5.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              CryptoCard(
+                cryptoCurrency: cryptoList[0],
+                coinValue: isWaiting ? '?' : coinValues[cryptoList[0]]!,
+                selectedCurrency: selectedCurrency,
               ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
-                child: Text(
-                  '1 BTC = $coinValue $selectedCurrency',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    color: Colors.white,
-                  ),
-                ),
+              CryptoCard(
+                cryptoCurrency: cryptoList[1],
+                coinValue: isWaiting ? '?' : coinValues[cryptoList[1]]!,
+                selectedCurrency: selectedCurrency,
               ),
-            ),
+              CryptoCard(
+                cryptoCurrency: cryptoList[2],
+                coinValue: isWaiting ? '?' : coinValues[cryptoList[2]]!,
+                selectedCurrency: selectedCurrency,
+              ),
+            ],
           ),
           Container(
               height: 150.0,
@@ -124,6 +111,44 @@ class _PriceScreenState extends State<PriceScreen> {
               color: Colors.lightBlue,
               child: Platform.isIOS ? iOSPicker() : androidDropdown()),
         ],
+      ),
+    );
+  }
+}
+
+class CryptoCard extends StatelessWidget {
+  const CryptoCard({
+    super.key,
+    required this.cryptoCurrency,
+    required this.coinValue,
+    required this.selectedCurrency,
+  });
+
+  final String cryptoCurrency;
+  final String coinValue;
+  final String selectedCurrency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
+      child: Card(
+        color: Colors.lightBlueAccent,
+        elevation: 5.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
+          child: Text(
+            '1 $cryptoCurrency = $coinValue $selectedCurrency',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20.0,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
     );
   }
