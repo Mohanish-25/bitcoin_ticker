@@ -1,3 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+
+final apiKey = dotenv.env['API_KEY'];
 const List<String> currenciesList = [
   'AUD',
   'BRL',
@@ -28,4 +34,19 @@ const List<String> cryptoList = [
   'LTC',
 ];
 
-class CoinData {}
+String fixedUrl = 'https://rest.coinapi.io/v1/exchangerate';
+
+class CoinData {
+  Future getCoinData(String selectedCurrency) async {
+    http.Response response = await http
+        .get(Uri.parse('$fixedUrl/BTC/$selectedCurrency?apikey=$apiKey'));
+    if (response.statusCode == 200) {
+      var decodedData = jsonDecode(response.body);
+      var rate = decodedData['rate'];
+      return rate.toStringAsFixed(0);
+    } else {
+      print(response.statusCode);
+      throw 'Problem with the get request';
+    }
+  }
+}
