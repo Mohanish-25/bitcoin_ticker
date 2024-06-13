@@ -38,15 +38,19 @@ String fixedUrl = 'https://rest.coinapi.io/v1/exchangerate';
 
 class CoinData {
   Future getCoinData(String selectedCurrency) async {
-    http.Response response = await http
-        .get(Uri.parse('$fixedUrl/BTC/$selectedCurrency?apikey=$apiKey'));
-    if (response.statusCode == 200) {
-      var decodedData = jsonDecode(response.body);
-      var rate = decodedData['rate'];
-      return rate.toStringAsFixed(0);
-    } else {
-      print(response.statusCode);
-      throw 'Problem with the get request';
+    Map<String, String> cryptoPrices = {};
+    for (String crypto in cryptoList) {
+      String requestURL = '$fixedUrl/$crypto/$selectedCurrency?apikey=$apiKey';
+      http.Response response = await http.get(Uri.parse(requestURL));
+      if (response.statusCode == 200) {
+        var decodedData = jsonDecode(response.body);
+        var rate = decodedData['rate'];
+        cryptoPrices[crypto] = rate.toStringAsFixed(0);
+      } else {
+        print(response.statusCode);
+        throw 'Problem with the get request';
+      }
     }
+    return cryptoPrices;
   }
 }
